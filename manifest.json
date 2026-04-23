@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "Responsive Viewer Pro",
+  "version": "1.0.0",
+  "description": "Advanced responsive viewer with real browser simulation for frontend developers.",
+  "icons": {
+    "16": "src/assets/icon16.png",
+    "48": "src/assets/icon48.png",
+    "128": "src/assets/icon128.png"
+  },
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_title": "Responsive Viewer Pro",
+    "default_icon": {
+      "16": "src/assets/icon16.png",
+      "48": "src/assets/icon48.png"
+    }
+  },
+  "background": {
+    "service_worker": "src/background/service-worker.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/ua-override.ts"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    }
+  ],
+  "permissions": [
+    "tabs",
+    "scripting",
+    "storage",
+    "windows",
+    "declarativeNetRequest",
+    "webNavigation",
+    "system.display"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "declarative_net_request": {
+    "rule_resources": []
+  },
+  "commands": {
+    "toggle-viewer": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+R",
+        "mac": "Command+Shift+R"
+      },
+      "description": "Toggle Responsive Viewer"
+    }
+  },
+  "web_accessible_resources": []
+}

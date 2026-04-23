@@ -1,0 +1,88 @@
+/*
+ * Firefox CSS approximation layer
+ *
+ * Injected into the iframe when Firefox (Android or Desktop) simulation is active.
+ * Overlays Blink defaults with their closest Gecko equivalents.
+ */
+
+/* ── Scrollbars ─────────────────────────────────────────────────────────────
+   Firefox uses thin overlay scrollbars on macOS, and styled OS scrollbars on Win/Linux.
+   We use the W3C scrollbar spec (supported in Chrome 121+) to approximate.
+*/
+* {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(0, 0, 0, 0.4) transparent !important;
+}
+
+/* Hide WebKit scrollbar styling to prevent double rendering */
+::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.4) !important;
+  border-radius: 3px !important;
+}
+
+/* ── Font rendering ──────────────────────────────────────────────────────────
+   Firefox on macOS: -moz-osx-font-smoothing: grayscale is the equivalent of
+   Safari's -webkit-font-smoothing: antialiased.
+*/
+* {
+  -moz-osx-font-smoothing: grayscale !important;
+  -webkit-font-smoothing: antialiased !important;
+}
+
+/* ── Form elements ───────────────────────────────────────────────────────────
+   Firefox has its own native form element styling. We approximate by resetting
+   appearance to a neutral baseline similar to Firefox's clean form look.
+*/
+input,
+textarea,
+select,
+button {
+  -moz-appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+textarea {
+  border-radius: 4px !important;
+  border: 1px solid #9a9a9a !important;
+}
+
+select {
+  border-radius: 4px !important;
+  border: 1px solid #9a9a9a !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23666' d='M6 8L0 0h12z'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 8px center !important;
+  padding-right: 28px !important;
+}
+
+/* Firefox focus ring: offset blue ring, no default outline glow */
+:focus {
+  outline: 2px solid #0060df !important;
+  outline-offset: 2px !important;
+  box-shadow: none !important;
+}
+
+/* ── Focus-visible only (Firefox default) ────────────────────────────────── */
+:focus:not(:focus-visible) {
+  outline: none !important;
+}
+
+:focus-visible {
+  outline: 2px solid #0060df !important;
+  outline-offset: 2px !important;
+}

@@ -1,0 +1,112 @@
+/*
+ * Safari CSS approximation layer
+ *
+ * Injected into the iframe when Safari (iOS or macOS) simulation is active.
+ * Overlays Blink defaults with their closest Safari/WebKit equivalents.
+ *
+ * The ViewportFrame injects a  data-rvp-mode="safari-ios|safari-macos"
+ * attribute on <html> so we can write mode-specific rules within this
+ * single shared file.
+ */
+
+/* ── Scrollbars — macOS Safari ───────────────────────────────────────────────
+   macOS Safari uses native overlay scrollbars (thin, floating, auto-hide).
+   Shown only when not in iOS mode.
+*/
+::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+  background: transparent !important;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border-radius: 10px !important;
+  border: 2px solid transparent !important;
+  background-clip: content-box !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.5) !important;
+  background-clip: content-box !important;
+}
+
+/* ── Scrollbars — iOS Safari ─────────────────────────────────────────────────
+   iOS Safari hides scrollbars entirely (momentum scrolling, no visible bar).
+   Overrides the rules above when safari-ios mode is active.
+*/
+html[data-rvp-mode="safari-ios"] ::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+html[data-rvp-mode="safari-ios"] * {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* ── Font rendering ──────────────────────────────────────────────────────────
+   Safari uses antialiased (lighter) font rendering by default.
+*/
+* {
+  -webkit-font-smoothing: antialiased !important;
+}
+
+/* ── Text size adjust — iOS Safari ──────────────────────────────────────────
+   iOS Safari auto-inflates font sizes after orientation change.
+   Setting 100% disables that inflation, which is what well-behaved sites do.
+   Chrome ignores this property, but injecting it matches what sites expect.
+*/
+html[data-rvp-mode="safari-ios"] html,
+html[data-rvp-mode="safari-ios"] body {
+  -webkit-text-size-adjust: 100% !important;
+  text-size-adjust: 100% !important;
+}
+
+/* ── Form elements ───────────────────────────────────────────────────────────
+   Safari preserves some native Aqua styling. We reset toward a neutral baseline
+   that is closer to Safari's defaults than Chrome's.
+*/
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+textarea,
+select {
+  -webkit-appearance: none !important;
+  border-radius: 6px !important;
+  border: 1.5px solid #c2c2c2 !important;
+}
+
+input[type="checkbox"] {
+  border-radius: 4px !important;
+}
+
+input[type="radio"] {
+  border-radius: 50% !important;
+}
+
+/* ── Tap highlight ───────────────────────────────────────────────────────────
+   Safari sets -webkit-tap-highlight-color to a semi-transparent blue by default.
+   Chrome sets it to a very light grey.
+*/
+* {
+  -webkit-tap-highlight-color: rgba(0, 122, 255, 0.2) !important;
+}
+
+/* ── Momentum scrolling — iOS Safari ────────────────────────────────────────
+   iOS Safari uses native momentum (inertial) scrolling. The CSS property that
+   enables the same feel in WebKit/Blink is -webkit-overflow-scrolling: touch.
+   Deprecated in favour of overscroll-behavior, but still respected by older
+   sites and adds the correct scroll-bounce feel.
+*/
+html[data-rvp-mode="safari-ios"] * {
+  -webkit-overflow-scrolling: touch !important;
+}
