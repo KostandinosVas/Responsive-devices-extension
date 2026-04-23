@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build output (generated from source — not needed in repo)
+dist/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Env files (keep secrets out)
+.env
+.env.local
+.env.*.local
