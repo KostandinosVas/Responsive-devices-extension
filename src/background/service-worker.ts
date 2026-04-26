@@ -159,17 +159,34 @@ async function openViewer(url: string): Promise<void> {
   let H = 900;
   let left = 0;
   let top = 0;
+
+  // Try system.display first (most accurate)
+  let gotSize = false;
   try {
     const displays = await chrome.system.display.getInfo();
     const primary = displays.find((d) => d.isPrimary) ?? displays[0];
-    if (primary) {
+    if (primary && primary.bounds.width > 0) {
       W = Math.round(primary.bounds.width * 0.8);
-      H = Math.round(primary.bounds.height * 0.7);
+      H = Math.round(primary.bounds.height * 0.9);
       left = primary.bounds.left + Math.round((primary.bounds.width - W) / 2);
       top = primary.bounds.top + Math.round((primary.bounds.height - H) / 2);
+      gotSize = true;
     }
-  } catch (_) {
-    // fall back to fixed defaults
+  } catch (_) { /* continue to fallback */ }
+
+  // Fallback: derive size from the currently focused browser window
+  if (!gotSize) {
+    try {
+      const focused = await chrome.windows.getLastFocused();
+      if (focused && focused.width && focused.height) {
+        const sw = (focused.left ?? 0) + focused.width;
+        const sh = (focused.top ?? 0) + focused.height;
+        W = Math.round(sw * 0.8);
+        H = Math.round(sh * 0.9);
+        left = Math.round((sw - W) / 2);
+        top = Math.round((sh - H) / 2);
+      }
+    } catch (_) { /* use fixed defaults */ }
   }
 
   const win = await chrome.windows.create({
@@ -260,8 +277,8 @@ chrome.webNavigation.onCommitted.addListener(
         world: chrome.scripting.ExecutionWorld.MAIN,
         injectImmediately: true,
         func: () => {
-          if ((window as Record<string, unknown>).__rvp_touch_relay__) return;
-          (window as Record<string, unknown>).__rvp_touch_relay__ = true;
+          if ((window as unknown as Record<string, unknown>).__rvp_touch_relay__) return;
+          (window as unknown as Record<string, unknown>).__rvp_touch_relay__ = true;
 
           let activeTouchId = 0;
           let lastTarget: EventTarget | null = null;
@@ -299,10 +316,10 @@ chrome.webNavigation.onCommitted.addListener(
               new TouchEvent(type, {
                 bubbles: true,
                 cancelable: true,
-                touches: active as unknown as TouchList,
-                targetTouches: active as unknown as TouchList,
-                changedTouches: [t] as unknown as TouchList,
-              }),
+                touches: active,
+                targetTouches: active,
+                changedTouches: [t],
+              } as unknown as TouchEventInit),
             );
           }
 
