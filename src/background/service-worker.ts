@@ -248,6 +248,134 @@ chrome.webNavigation.onCommitted.addListener(
     const simUA = result["simUA"] as string | undefined;
     const simMode = result["simMode"] as string | undefined;
 
+    // ── Touch/scroll relay injection ──────────────────────────────────────
+    // Injects the postMessage listener that converts __RVP_TOUCH__ /
+    // __RVP_SCROLL__ messages from the viewer overlay into real TouchEvents
+    // and scrollBy calls inside the iframed page.
+    // Previously done by the manifest content script; now injected only into
+    // viewer sub-frames so the extension doesn't run on all pages the user visits.
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: details.tabId, frameIds: [details.frameId] },
+        world: chrome.scripting.ExecutionWorld.MAIN,
+        injectImmediately: true,
+        func: () => {
+          if ((window as Record<string, unknown>).__rvp_touch_relay__) return;
+          (window as Record<string, unknown>).__rvp_touch_relay__ = true;
+
+          let activeTouchId = 0;
+          let lastTarget: EventTarget | null = null;
+          let touchStartX = 0;
+          let touchStartY = 0;
+
+          function makeTouch(
+            target: EventTarget,
+            x: number,
+            y: number,
+          ): Touch {
+            return new Touch({
+              identifier: activeTouchId,
+              target: target as Element,
+              clientX: x,
+              clientY: y,
+              pageX: x + window.scrollX,
+              pageY: y + window.scrollY,
+              screenX: x,
+              screenY: y,
+              radiusX: 12,
+              radiusY: 12,
+              rotationAngle: 0,
+              force: 1,
+            });
+          }
+
+          function dispatchTouch(
+            target: EventTarget,
+            type: "touchstart" | "touchmove" | "touchend",
+            t: Touch,
+          ) {
+            const active = type === "touchend" ? [] : [t];
+            target.dispatchEvent(
+              new TouchEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                touches: active as unknown as TouchList,
+                targetTouches: active as unknown as TouchList,
+                changedTouches: [t] as unknown as TouchList,
+              }),
+            );
+          }
+
+          window.addEventListener("message", (e) => {
+            const d = e.data as {
+              type?: string;
+              kind?: string;
+              x?: number;
+              y?: number;
+            } | null;
+            if (!d || d.type !== "__RVP_TOUCH__") return;
+            const x = d.x ?? 0;
+            const y = d.y ?? 0;
+            const el = document.elementFromPoint(x, y) ?? document.body;
+
+            if (d.kind === "start") {
+              activeTouchId++;
+              lastTarget = el;
+              touchStartX = x;
+              touchStartY = y;
+              dispatchTouch(el, "touchstart", makeTouch(el, x, y));
+            } else if (d.kind === "move" && lastTarget) {
+              dispatchTouch(
+                lastTarget,
+                "touchmove",
+                makeTouch(lastTarget, x, y),
+              );
+            } else if (d.kind === "end" && lastTarget) {
+              dispatchTouch(
+                lastTarget,
+                "touchend",
+                makeTouch(lastTarget, x, y),
+              );
+              const dx = x - touchStartX;
+              const dy = y - touchStartY;
+              if (Math.sqrt(dx * dx + dy * dy) < 10) {
+                const clickTarget =
+                  document.elementFromPoint(x, y) ?? document.body;
+                clickTarget.dispatchEvent(
+                  new MouseEvent("click", {
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: x,
+                    clientY: y,
+                    screenX: x,
+                    screenY: y,
+                    view: window,
+                  }),
+                );
+              }
+              lastTarget = null;
+            }
+          });
+
+          window.addEventListener("message", (e) => {
+            const d = e.data as {
+              type?: string;
+              deltaX?: number;
+              deltaY?: number;
+            } | null;
+            if (!d || d.type !== "__RVP_SCROLL__") return;
+            window.scrollBy({
+              left: d.deltaX ?? 0,
+              top: d.deltaY ?? 0,
+              behavior: "instant" as ScrollBehavior,
+            });
+          });
+        },
+      });
+    } catch (_e) {
+      // Frame may not be accessible
+    }
+
     // ── UA override JS injection ──────────────────────────────────────────
     if (simUA && simMode && simMode !== "chrome") {
       try {
@@ -315,6 +443,28 @@ chrome.webNavigation.onCommitted.addListener(
         });
       } catch (_e) {
         // Frame may not be accessible
+      }
+    }
+
+    // ── Scrollbar hiding for mobile UAs ───────────────────────────────────
+    // Real mobile browsers hide scrollbars; inject CSS to match when simulating
+    // a touch UA. Previously done by the manifest content script.
+    const isTouchUA =
+      simUA &&
+      (simUA.includes("iPhone") ||
+        simUA.includes("iPad") ||
+        simUA.includes("Android"));
+    if (isTouchUA) {
+      try {
+        await chrome.scripting.insertCSS({
+          target: { tabId: details.tabId, frameIds: [details.frameId] },
+          css: `
+            *::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+            * { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+          `,
+        });
+      } catch (_e) {
+        // non-fatal
       }
     }
   },

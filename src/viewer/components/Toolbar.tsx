@@ -15,7 +15,7 @@ import type { BrowserMode } from "../../types";
 import { BROWSERS, BROWSER_LIST } from "../../data/browsers";
 import { DEVICES } from "../../data/devices";
 import { BACKGROUNDS } from "../../data/backgrounds";
-import logoUrl from "../../assets/logo.png";
+import logoUrl from "../../assets/forma_logo.svg";
 
 interface Props {
   url: string;
@@ -300,13 +300,11 @@ export function Toolbar({
     <aside className="sidebar">
       {/* ── Logo ────────────────────────────────────────── */}
       <div className="sidebar-logo">
-        <div className="logo-icon">
-          <img src={logoUrl} alt="DevView" style={{ width: 22, height: 22, objectFit: "contain" }} />
-        </div>
-        <div>
-          <div className="logo-name">DevView</div>
-          <div className="logo-subtitle">Responsive Viewer Pro</div>
-        </div>
+        <img
+          src={logoUrl}
+          alt="Forma — Responsive Design Viewer"
+          style={{ width: "100%", height: "auto", display: "block" }}
+        />
       </div>
 
       <div className="sidebar-scroll">

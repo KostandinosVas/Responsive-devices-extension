@@ -25,6 +25,21 @@ function Popup() {
     setLoading(true);
     setError(null);
     try {
+      // Request host permission if not already granted.
+      // This must happen from a user gesture in the popup (Chrome requirement).
+      const alreadyGranted = await chrome.permissions.contains({
+        origins: ["<all_urls>"],
+      });
+      if (!alreadyGranted) {
+        const granted = await chrome.permissions.request({
+          origins: ["<all_urls>"],
+        });
+        if (!granted) {
+          setError("Host permission required to preview pages.");
+          setLoading(false);
+          return;
+        }
+      }
       await chrome.runtime.sendMessage({
         type: "OPEN_VIEWER",
         url: currentUrl,
