@@ -229,6 +229,9 @@
   let lastTarget: EventTarget | null = null;
   let touchStartX = 0;
   let touchStartY = 0;
+  // Track last move position so we can compute swipe-scroll deltas below.
+  let lastMoveX = 0;
+  let lastMoveY = 0;
 
   function makeTouch(target: EventTarget, x: number, y: number): Touch {
     return new Touch({
@@ -251,17 +254,17 @@
     target: EventTarget,
     type: "touchstart" | "touchmove" | "touchend",
     t: Touch,
-  ) {
+  ): TouchEvent {
     const active = type === "touchend" ? [] : [t];
-    target.dispatchEvent(
-      new TouchEvent(type, {
-        bubbles: true,
-        cancelable: true,
-        touches: active as unknown as TouchList,
-        targetTouches: active as unknown as TouchList,
-        changedTouches: [t] as unknown as TouchList,
-      }),
-    );
+    const ev = new TouchEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      touches: active as unknown as TouchList,
+      targetTouches: active as unknown as TouchList,
+      changedTouches: [t] as unknown as TouchList,
+    });
+    target.dispatchEvent(ev);
+    return ev;
   }
 
   window.addEventListener("message", (e) => {
@@ -276,9 +279,24 @@
       lastTarget = el;
       touchStartX = x;
       touchStartY = y;
+      lastMoveX = x;
+      lastMoveY = y;
       dispatch(el, "touchstart", makeTouch(el, x, y));
     } else if (d.kind === "move" && lastTarget) {
-      dispatch(lastTarget, "touchmove", makeTouch(lastTarget, x, y));
+      const ev = dispatch(lastTarget, "touchmove", makeTouch(lastTarget, x, y));
+      // If no handler called preventDefault() (i.e. no slider consumed the
+      // touch), manually scroll the page so swipe-to-scroll still works on
+      // regular pages that rely on native browser scroll.
+      if (!ev.defaultPrevented) {
+        window.scrollBy({
+          left: -(x - lastMoveX),
+          top: -(y - lastMoveY),
+          // @ts-ignore — "instant" is valid but missing from older TS lib types
+          behavior: "instant",
+        });
+      }
+      lastMoveX = x;
+      lastMoveY = y;
     } else if (d.kind === "end" && lastTarget) {
       dispatch(lastTarget, "touchend", makeTouch(lastTarget, x, y));
       // Synthesize a click if the finger didn't move (tap gesture).
@@ -304,13 +322,37 @@
     }
   });
 
-  // Scroll relay — wheel events and swipe deltas forwarded from the viewer
+  // Scroll relay — wheel events forwarded from the viewer.
+  // We dispatch a real WheelEvent at the element under the pointer so that
+  // wheel-based sliders (e.g. Swiper mousewheel module) can intercept it.
+  // Only fall back to window.scrollBy() if no handler called preventDefault().
   window.addEventListener("message", (e) => {
-    const d = e.data as { type?: string; deltaX?: number; deltaY?: number } | null;
+    const d = e.data as { type?: string; deltaX?: number; deltaY?: number; x?: number; y?: number } | null;
     if (!d || d.type !== "__RVP_SCROLL__") return;
+    const deltaX = d.deltaX ?? 0;
+    const deltaY = d.deltaY ?? 0;
+
+    if (d.x !== undefined && d.y !== undefined) {
+      const el = document.elementFromPoint(d.x, d.y) ?? document.body;
+      const wheelEv = new WheelEvent("wheel", {
+        bubbles: true,
+        cancelable: true,
+        deltaX,
+        deltaY,
+        deltaMode: WheelEvent.DOM_DELTA_PIXEL,
+        clientX: d.x,
+        clientY: d.y,
+        view: window,
+      });
+      el.dispatchEvent(wheelEv);
+      // A slider (e.g. Swiper) calls preventDefault() to own this scroll.
+      // Respect that and don't also move the page.
+      if (wheelEv.defaultPrevented) return;
+    }
+
     window.scrollBy({
-      left: d.deltaX ?? 0,
-      top: d.deltaY ?? 0,
+      left: deltaX,
+      top: deltaY,
       // @ts-ignore — "instant" is valid but missing from older TS lib types
       behavior: "instant",
     });

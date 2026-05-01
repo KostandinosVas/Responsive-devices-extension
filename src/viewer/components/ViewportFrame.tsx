@@ -73,10 +73,12 @@ export function ViewportFrame({
     );
   };
 
-  /** Send a scroll delta to the iframe (used for both wheel and swipe drag) */
-  const postScroll = (deltaX: number, deltaY: number) => {
+  /** Send a scroll delta to the iframe (used for wheel events).
+   *  x/y are the logical iframe coords of the pointer, so the content script
+   *  can dispatch a WheelEvent at the right element (e.g. a Swiper container). */
+  const postScroll = (deltaX: number, deltaY: number, x?: number, y?: number) => {
     iframeRef.current?.contentWindow?.postMessage(
-      { type: "__RVP_SCROLL__", deltaX, deltaY },
+      { type: "__RVP_SCROLL__", deltaX, deltaY, x, y },
       "*",
     );
   };
@@ -92,12 +94,11 @@ export function ViewportFrame({
   const handleOverlayMouseMove = (e: React.MouseEvent) => {
     if (touchActive.current) {
       const { x, y } = overlayCoords(e);
-      // Forward as TouchEvent (for JS gesture handlers)
+      // Forward as TouchEvent only — the content script checks defaultPrevented
+      // on the dispatched touchmove and falls back to window.scrollBy() if no
+      // handler consumes it. Sending a separate postScroll here would cause
+      // scroll-triggered sliders (e.g. Swiper) to receive conflicting signals.
       postTouch("move", x, y);
-      // Also scroll by the drag delta (swipe-to-scroll)
-      const dx = x - lastTouchLogical.current.x;
-      const dy = y - lastTouchLogical.current.y;
-      postScroll(-dx, -dy);
       lastTouchLogical.current = { x, y };
     }
   };
@@ -128,7 +129,12 @@ export function ViewportFrame({
     if (!el) return;
     const handler = (e: WheelEvent) => {
       e.preventDefault();
-      postScroll(e.deltaX / zoomRef.current, e.deltaY / zoomRef.current);
+      // Include pointer position so the content script can dispatch the
+      // WheelEvent on the correct element (e.g. a Swiper container).
+      const rect = overlayRef.current!.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / zoomRef.current;
+      const y = (e.clientY - rect.top) / zoomRef.current;
+      postScroll(e.deltaX / zoomRef.current, e.deltaY / zoomRef.current, x, y);
     };
     el.addEventListener("wheel", handler, { passive: false });
     return () => el.removeEventListener("wheel", handler);
