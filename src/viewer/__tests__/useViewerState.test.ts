@@ -48,7 +48,7 @@ describe("useViewerState", () => {
   it("always uses the URL from the query param, ignoring any stored url", async () => {
     storageMock().mockImplementation(
       (_key: string, cb: (r: Record<string, unknown>) => void) =>
-        cb({ rvp_viewer_state: { url: "https://stored.com" } }),
+        cb({ forma_viewer_state: { url: "https://stored.com" } }),
     );
     const { result } = renderHook(() =>
       useViewerState("https://passed-in.com"),
@@ -62,7 +62,7 @@ describe("useViewerState", () => {
   it("restores persisted zoom from storage", async () => {
     storageMock().mockImplementation(
       (_key: string, cb: (r: Record<string, unknown>) => void) =>
-        cb({ rvp_viewer_state: { zoom: 0.75 } }),
+        cb({ forma_viewer_state: { zoom: 0.75 } }),
     );
     const { result } = renderHook(() => useViewerState("https://example.com"));
     await waitFor(() => expect(result.current.loaded).toBe(true));
@@ -73,7 +73,7 @@ describe("useViewerState", () => {
     storageMock().mockImplementation(
       (_key: string, cb: (r: Record<string, unknown>) => void) =>
         cb({
-          rvp_viewer_state: {
+          forma_viewer_state: {
             deviceId: "custom",
             browserMode: "firefox-desktop",
             customWidth: 1280,
@@ -228,7 +228,7 @@ describe("useViewerState", () => {
     act(() => result.current.setZoom(0.5));
     expect(chrome.storage.local.set).toHaveBeenCalledWith(
       expect.objectContaining({
-        rvp_viewer_state: expect.objectContaining({ zoom: 0.5 }),
+        forma_viewer_state: expect.objectContaining({ zoom: 0.5 }),
       }),
     );
   });

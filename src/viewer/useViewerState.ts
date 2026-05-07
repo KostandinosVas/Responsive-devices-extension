@@ -6,7 +6,7 @@ import type { BrowserMode, ViewerState } from "../types";
 import { BROWSERS } from "../data/browsers";
 import { DEVICE_MAP } from "../data/devices";
 
-const STORAGE_KEY = "rvp_viewer_state";
+const STORAGE_KEY = "forma_viewer_state";
 
 function getDefaultState(url: string): ViewerState {
   return {

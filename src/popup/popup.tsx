@@ -96,7 +96,7 @@ function Popup() {
         </div>
         <div style={{ flex: 1 }}>
           <div className="popup-title">Forma</div>
-          <div className="popup-tagline">Responsive Viewer Pro</div>
+          <div className="popup-tagline">Responsive device preview</div>
         </div>
       </div>
 

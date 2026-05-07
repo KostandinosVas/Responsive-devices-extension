@@ -294,7 +294,7 @@ export function ViewportFrame({
           ref={iframeRef}
           key={iframeKey}
           src={url}
-          title="Responsive Preview"
+          title="Forma"
           className="block border-0 absolute top-0 left-0"
           style={{
             width,
