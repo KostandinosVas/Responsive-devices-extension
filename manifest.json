@@ -30,7 +30,7 @@
     "webNavigation",
     "system.display"
   ],
-  "optional_host_permissions": ["<all_urls>"],
+  "host_permissions": ["<all_urls>"],
   "declarative_net_request": {
     "rule_resources": []
   },

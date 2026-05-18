@@ -24,6 +24,15 @@ const DNR_UA_BASE = 2000; // rule: set User-Agent request header
 // Map: tabId → windowId (for viewer windows we manage)
 const viewerTabs = new Map<number, number>();
 
+// Restore viewer tabs from session storage so injection survives service worker restarts
+chrome.storage.session.get(["viewerTabId", "viewerWindowId"]).then((r) => {
+  const tabId = r["viewerTabId"] as number | undefined;
+  const windowId = r["viewerWindowId"] as number | undefined;
+  if (tabId && windowId) {
+    viewerTabs.set(tabId, windowId);
+  }
+}).catch(() => { /* storage may not be available during first install */ });
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function frameBypassRuleId(tabId: number): number {
@@ -205,6 +214,8 @@ async function openViewer(url: string): Promise<void> {
   const tabId = win.tabs[0].id!;
 
   viewerTabs.set(tabId, winId);
+  // Persist so the viewer tab survives service worker restarts
+  chrome.storage.session.set({ viewerTabId: tabId, viewerWindowId: winId }).catch(console.error);
 
   // Activate frame bypass rules immediately
   await addFrameBypassRules(tabId);
@@ -251,6 +262,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   if (viewerTabs.has(tabId)) {
     viewerTabs.delete(tabId);
     removeRulesForTab(tabId).catch(console.error);
+    chrome.storage.session.remove(["viewerTabId", "viewerWindowId"]).catch(console.error);
   }
 });
 
