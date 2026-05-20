@@ -368,6 +368,16 @@ chrome.webNavigation.onCommitted.addListener(
               const dx = x - touchStartX;
               const dy = y - touchStartY;
               if (Math.sqrt(dx * dx + dy * dy) < 10) {
+                // Request storage access on first tap so the site's cookies are
+                // accessible in this cross-site iframe context (cookie banners
+                // remember consent only if cookies can actually be stored/read).
+                if (
+                  typeof document.requestStorageAccess === "function" &&
+                  !(document as { __rvpSAReq?: boolean }).__rvpSAReq
+                ) {
+                  (document as { __rvpSAReq?: boolean }).__rvpSAReq = true;
+                  document.requestStorageAccess().catch(() => {});
+                }
                 const clickTarget =
                   document.elementFromPoint(x, y) ?? document.body;
                 clickTarget.dispatchEvent(
@@ -381,6 +391,15 @@ chrome.webNavigation.onCommitted.addListener(
                     view: window,
                   }),
                 );
+                // Synthetic clicks don't trigger native focus — explicitly focus
+                // any tapped input/textarea/select/contenteditable so the user
+                // can type immediately after tapping the field.
+                const focusable = (
+                  clickTarget.matches("input,textarea,select,[contenteditable]")
+                    ? clickTarget
+                    : clickTarget.closest("input,textarea,select,[contenteditable]")
+                ) as HTMLElement | null;
+                if (focusable) focusable.focus();
               }
               lastTarget = null;
             }

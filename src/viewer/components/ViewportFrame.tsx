@@ -55,6 +55,7 @@ export function ViewportFrame({
   const [iframeKey, setIframeKey] = useState(0);
   const touchActive = useRef(false);
   const lastTouchLogical = useRef({ x: 0, y: 0 });
+  const touchStartLogical = useRef({ x: 0, y: 0 });
 
   /** Convert a MouseEvent on the overlay to logical (unscaled) iframe coords */
   const overlayCoords = (e: React.MouseEvent | MouseEvent) => {
@@ -88,6 +89,7 @@ export function ViewportFrame({
     touchActive.current = true;
     const { x, y } = overlayCoords(e);
     lastTouchLogical.current = { x, y };
+    touchStartLogical.current = { x, y };
     postTouch("start", x, y);
   };
 
@@ -108,12 +110,25 @@ export function ViewportFrame({
     touchActive.current = false;
     const { x, y } = overlayCoords(e);
     postTouch("end", x, y);
+    // For taps (small movement), focus the iframe so keyboard events route to
+    // the input element that the relay will focus inside.
+    const dx = x - touchStartLogical.current.x;
+    const dy = y - touchStartLogical.current.y;
+    if (Math.sqrt(dx * dx + dy * dy) < 10) {
+      iframeRef.current?.focus();
+    }
   };
 
   const handleOverlayMouseLeave = () => {
     if (touchActive.current) {
       touchActive.current = false;
-      postTouch("end", lastTouchLogical.current.x, lastTouchLogical.current.y);
+      const { x, y } = lastTouchLogical.current;
+      postTouch("end", x, y);
+      const dx = x - touchStartLogical.current.x;
+      const dy = y - touchStartLogical.current.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 10) {
+        iframeRef.current?.focus();
+      }
     }
   };
 
@@ -306,6 +321,11 @@ export function ViewportFrame({
             pointerEvents: isTouchDevice || isDragging.current ? "none" : "auto",
           }}
           sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads allow-modals"
+          // Storage Access API: lets the embedded site access its unpartitioned
+          // first-party cookie store even though the top-level frame is
+          // chrome-extension://.  Without this, SameSite=Lax cookies are never
+          // sent in requests and cookie-consent banners reappear on every page.
+          allow="storage-access"
           referrerPolicy="no-referrer"
         />
 

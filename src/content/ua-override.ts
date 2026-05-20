@@ -305,6 +305,13 @@
       const dx = x - touchStartX;
       const dy = y - touchStartY;
       if (Math.sqrt(dx * dx + dy * dy) < 10) {
+        if (
+          typeof document.requestStorageAccess === "function" &&
+          !(document as { __rvpSAReq?: boolean }).__rvpSAReq
+        ) {
+          (document as { __rvpSAReq?: boolean }).__rvpSAReq = true;
+          document.requestStorageAccess().catch(() => {});
+        }
         const clickTarget = document.elementFromPoint(x, y) ?? document.body;
         clickTarget.dispatchEvent(
           new MouseEvent("click", {
@@ -317,6 +324,14 @@
             view: window,
           }),
         );
+        // Synthetic clicks don't trigger native focus — explicitly focus
+        // any tapped input/textarea/select/contenteditable.
+        const focusable = (
+          clickTarget.matches("input,textarea,select,[contenteditable]")
+            ? clickTarget
+            : clickTarget.closest("input,textarea,select,[contenteditable]")
+        ) as HTMLElement | null;
+        if (focusable) focusable.focus();
       }
       lastTarget = null;
     }
