@@ -21,13 +21,13 @@ Forma is a Chrome extension that lets you instantly preview any webpage across p
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Extension platform | Chrome Manifest V3 |
-| UI | React 19 + TypeScript |
-| Styling | Tailwind CSS v4 |
-| Bundler | Vite + `@crxjs/vite-plugin` |
-| Tests | Vitest + Testing Library |
+| Layer              | Technology                  |
+| ------------------ | --------------------------- |
+| Extension platform | Chrome Manifest V3          |
+| UI                 | React 19 + TypeScript       |
+| Styling            | Tailwind CSS v4             |
+| Bundler            | Vite + `@crxjs/vite-plugin` |
+| Tests              | Vitest + Testing Library    |
 
 ---
 

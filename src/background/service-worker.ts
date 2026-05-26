@@ -269,6 +269,19 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 // 3. Dynamic UA + CSS injection on frame navigation within viewer tabs
 chrome.webNavigation.onCommitted.addListener(
   async (details) => {
+    // If the in-memory map is empty (service worker was restarted and the
+    // async session-storage restore hasn't completed yet), do a one-off
+    // synchronous await here so we don't miss the injection for this frame.
+    if (!viewerTabs.has(details.tabId)) {
+      try {
+        const r = await chrome.storage.session.get(["viewerTabId", "viewerWindowId"]);
+        const storedTabId = r["viewerTabId"] as number | undefined;
+        const storedWindowId = r["viewerWindowId"] as number | undefined;
+        if (storedTabId && storedWindowId) {
+          viewerTabs.set(storedTabId, storedWindowId);
+        }
+      } catch (_) { /* ignore */ }
+    }
     if (!viewerTabs.has(details.tabId)) return;
     // Only inject into http/https sub-frames (the iframed target pages)
     if (details.frameId === 0) return; // skip the viewer page's own frame
@@ -296,6 +309,8 @@ chrome.webNavigation.onCommitted.addListener(
           let lastTarget: EventTarget | null = null;
           let touchStartX = 0;
           let touchStartY = 0;
+          let lastMoveX = 0;
+          let lastMoveY = 0;
 
           function makeTouch(
             target: EventTarget,
@@ -318,21 +333,21 @@ chrome.webNavigation.onCommitted.addListener(
             });
           }
 
-          function dispatchTouch(
+          function dispatch(
             target: EventTarget,
             type: "touchstart" | "touchmove" | "touchend",
             t: Touch,
-          ) {
+          ): TouchEvent {
             const active = type === "touchend" ? [] : [t];
-            target.dispatchEvent(
-              new TouchEvent(type, {
-                bubbles: true,
-                cancelable: true,
-                touches: active,
-                targetTouches: active,
-                changedTouches: [t],
-              } as unknown as TouchEventInit),
-            );
+            const ev = new TouchEvent(type, {
+              bubbles: true,
+              cancelable: true,
+              touches: active,
+              targetTouches: active,
+              changedTouches: [t],
+            } as unknown as TouchEventInit);
+            target.dispatchEvent(ev);
+            return ev;
           }
 
           window.addEventListener("message", (e) => {
@@ -352,15 +367,24 @@ chrome.webNavigation.onCommitted.addListener(
               lastTarget = el;
               touchStartX = x;
               touchStartY = y;
-              dispatchTouch(el, "touchstart", makeTouch(el, x, y));
+              lastMoveX = x;
+              lastMoveY = y;
+              dispatch(el, "touchstart", makeTouch(el, x, y));
             } else if (d.kind === "move" && lastTarget) {
-              dispatchTouch(
-                lastTarget,
-                "touchmove",
-                makeTouch(lastTarget, x, y),
-              );
+              const ev = dispatch(lastTarget, "touchmove", makeTouch(lastTarget, x, y));
+              // If no handler called preventDefault() (no slider consumed the
+              // touch), manually scroll so swipe-to-scroll works on plain pages.
+              if (!ev.defaultPrevented) {
+                window.scrollBy({
+                  left: -(x - lastMoveX),
+                  top: -(y - lastMoveY),
+                  behavior: "instant" as ScrollBehavior,
+                });
+              }
+              lastMoveX = x;
+              lastMoveY = y;
             } else if (d.kind === "end" && lastTarget) {
-              dispatchTouch(
+              dispatch(
                 lastTarget,
                 "touchend",
                 makeTouch(lastTarget, x, y),

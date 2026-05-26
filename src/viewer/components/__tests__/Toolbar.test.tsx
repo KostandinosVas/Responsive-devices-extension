@@ -21,11 +21,18 @@ function makeProps(overrides: Partial<Parameters<typeof Toolbar>[0]> = {}) {
     deviceId: "iphone-14",
     browserMode: "safari-ios" as BrowserMode,
     zoom: 1,
+    showFrame: false,
+    theme: "dark" as const,
+    background: null,
     onUrlChange: vi.fn(),
     onDeviceChange: vi.fn(),
     onBrowserModeChange: vi.fn(),
     onDimensionChange: vi.fn(),
     onZoomChange: vi.fn(),
+    onToggleFrame: vi.fn(),
+    onThemeToggle: vi.fn(),
+    onBackgroundChange: vi.fn(),
+    onRefresh: vi.fn(),
     ...overrides,
   };
 }

@@ -57,6 +57,40 @@ function Viewer() {
   }, [loaded]); // intentionally only when loaded
 
   const currentDevice = DEVICES.find((d) => d.id === state.deviceId);
+
+  // Reload the iframe whenever the device crosses the mobile/desktop boundary,
+  // because servers often return different HTML based on the UA category.
+  const isTouchDevice =
+    currentDevice?.category === "mobile" ||
+    currentDevice?.category === "tablet";
+  const prevIsTouchDevice = useRef<boolean | undefined>(undefined);
+  useEffect(() => {
+    if (prevIsTouchDevice.current === undefined) {
+      // Skip the very first render — no reload needed on initial mount.
+      prevIsTouchDevice.current = isTouchDevice;
+      return;
+    }
+    if (isTouchDevice !== prevIsTouchDevice.current) {
+      prevIsTouchDevice.current = isTouchDevice;
+      // Update the UA rule first; reload only once the background confirms
+      // (sendResponse) that the DNR rule is set, so the very first request
+      // the reloaded iframe makes carries the correct User-Agent.
+      const ua = BROWSERS[state.browserMode as keyof typeof BROWSERS]?.ua ?? "";
+      chrome.runtime.sendMessage(
+        { type: "SET_BROWSER_MODE", mode: state.browserMode, ua } as ExtMessage,
+        () => {
+          if (!chrome.runtime.lastError) {
+            setRefreshCount((c) => c + 1);
+          }
+        },
+      );
+    }
+  // state.browserMode is read inside the effect — listed in deps so the
+  // closure always sees the latest value; the isTouchDevice guard prevents
+  // spurious reloads when only the browser mode changes within a category.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTouchDevice, state.browserMode]);
+
   const currentDeviceName =
     currentDevice?.name ??
     (state.deviceId === "custom" ? "Custom" : state.deviceId);
@@ -165,10 +199,7 @@ function Viewer() {
                 onResize={setCustomDimensions}
                 hideHandles={activeFrame}
                 refreshTrigger={refreshCount}
-                isTouchDevice={
-                  currentDevice?.category === "mobile" ||
-                  currentDevice?.category === "tablet"
-                }
+                isTouchDevice={isTouchDevice}
               />
             </DeviceFrame>
 

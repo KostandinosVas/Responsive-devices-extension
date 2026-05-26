@@ -181,7 +181,7 @@
     if (isTouchUA) {
       if (typeof window.DeviceOrientationEvent === "undefined") {
         try {
-          (window as Record<string, unknown>).DeviceOrientationEvent =
+          (window as unknown as Record<string, unknown>).DeviceOrientationEvent =
             class DeviceOrientationEvent extends Event {
               readonly alpha: number | null = null;
               readonly beta: number | null = null;
@@ -197,7 +197,7 @@
       }
       if (typeof window.DeviceMotionEvent === "undefined") {
         try {
-          (window as Record<string, unknown>).DeviceMotionEvent =
+          (window as unknown as Record<string, unknown>).DeviceMotionEvent =
             class DeviceMotionEvent extends Event {
               readonly acceleration: null = null;
               readonly accelerationIncludingGravity: null = null;
@@ -222,8 +222,8 @@
 // The viewer page sends mouse events as postMessages so the simulated page
 // receives proper TouchEvents instead of mouse events.
 (function () {
-  if ((window as Record<string, unknown>).__rvp_touch_relay__) return;
-  (window as Record<string, unknown>).__rvp_touch_relay__ = true;
+  if ((window as unknown as Record<string, unknown>).__rvp_touch_relay__) return;
+  (window as unknown as Record<string, unknown>).__rvp_touch_relay__ = true;
 
   let activeTouchId = 0;
   let lastTarget: EventTarget | null = null;
@@ -259,10 +259,10 @@
     const ev = new TouchEvent(type, {
       bubbles: true,
       cancelable: true,
-      touches: active as unknown as TouchList,
-      targetTouches: active as unknown as TouchList,
-      changedTouches: [t] as unknown as TouchList,
-    });
+      touches: active,
+      targetTouches: active,
+      changedTouches: [t],
+    } as TouchEventInit);
     target.dispatchEvent(ev);
     return ev;
   }
